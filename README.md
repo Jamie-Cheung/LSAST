@@ -236,9 +236,9 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Please feel free to open an issue or contact us personally if you have questions, need help, or need explanations. Write to one of the following email addresses, and maybe put one other in the cc:
+Please feel free to open an issue or contact us personally if you have questions, need help, or need explanations. Write to one of the following email addresses:
 
-zhangyuxin2020@ia.ac.cn
+cszzj@zju.edu.cn(Preferred) or my co-contributing author cszqw@zju.edu.cn
 
 
 <!-- 
