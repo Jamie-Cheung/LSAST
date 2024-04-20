@@ -140,8 +140,8 @@ For packages, see environment.yaml.
 ### Train
 
    Train LSAST:
-
-   Firstly, Download the pretrained [Stable Diffusion Model](https://huggingface.co/runwayml/stable-diffusion-v1-5/tree/main/v1-5-pruned.ckpt) and save it at ./models/sd1.5/v1-5-pruned.ckpt.
+   
+   Firstly, you can download the pretrained v1-5-pruned.ckpt (stable diffusion 1.5) from https://huggingface.co/runwayml/stable-diffusion-v1-5/tree/main/ and save it at ./models/sd1.5/v1-5-pruned.ckpt.
 
    You can find Artowkrs from https://drive.google.com/drive/folders/1_2jykbjVCF6SqJisvIt5-4fAFzVAj-F0?usp=drive_link
    
