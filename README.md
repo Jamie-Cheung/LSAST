@@ -139,7 +139,11 @@ For packages, see environment.yaml.
 
 ### Train
 
-   Train ProSpect:
+   Train LSAST:
+
+   Firstly, Download the pretrained [Stable Diffusion Model](https://huggingface.co/runwayml/stable-diffusion-v1-5/tree/main/v1-5-pruned.ckpt) and save it at ./models/sd1.5/v1-5-pruned.ckpt.
+   
+   
    ```sh
    python main.py --base configs/stable-diffusion/v1-finetune.yaml
                -t 
@@ -155,7 +159,6 @@ For packages, see environment.yaml.
    
    See `configs/stable-diffusion/v1-finetune.yaml` for more options
    
-   Download the pretrained [Stable Diffusion Model](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4.ckpt) and save it at ./models/sd/sd-v1-4.ckpt.
    
 <p align="right">(<a href="#top">back to top</a>)</p>
 
