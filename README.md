@@ -171,8 +171,6 @@ For packages, see environment.yaml.
   You only need to change the line 184 with the pretrained model, then you can:
   
   To generate new images, run test.py
-  
-  #### Instructions
 
   ```sh
   python test.py
