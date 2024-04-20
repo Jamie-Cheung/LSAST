@@ -148,7 +148,7 @@ For packages, see environment.yaml.
    ```sh
    python main.py --base configs/stable-diffusion/v1-finetune.yaml
                -t 
-               --actual_resume ./models/sd/sd-v1-4.ckpt
+               --actual_resume ./models/sd1.5/v1-5-pruned.ckpt
                -n <run_name> 
                --gpus 0, 
                --data_root /path/to/directory/with/images
