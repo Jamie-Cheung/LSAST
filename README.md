@@ -81,7 +81,7 @@
 
 
 <!-- ABOUT THE PROJECT -->
-# Towards Highly Realistic Artistic Style Transfer via Stable Diffusion with Step-aware and Layer-aware Prompt Inversion
+## Towards Highly Realistic Artistic Style Transfer via Stable Diffusion with Step-aware and Layer-aware Prompt Inversion (IJCAI2024)
 
 <!-- ![teaser](./Images/teaser.png) -->
 ![teaser](./Images/image1.jpeg)
