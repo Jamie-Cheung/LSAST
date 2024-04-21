@@ -179,7 +179,12 @@ For packages, see environment.yaml.
 ### Citation
    
    ```sh
-
+   @article{zhang2024towards,
+   title={Towards Highly Realistic Artistic Style Transfer via Stable Diffusion with Step-aware and Layer-aware Prompt},
+   author={Zhang, Zhanjie and Zhang, Quanwei and Lin, Huaizhong and Xing, Wei and Mo, Juncheng and Huang, Shuaicheng and Xie, Jinheng and Li, Guangyuan and Luan, Junsheng and Zhao, Lei and others},
+   journal={arXiv preprint arXiv:2404.11474},
+   year={2024}
+   }
    ```
    
 <p align="right">(<a href="#top">back to top</a>)</p>
