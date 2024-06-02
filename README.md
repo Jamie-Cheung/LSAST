@@ -164,7 +164,7 @@ For packages, see environment.yaml.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ### Test
-  Download the pretrained [Controlnet] ([https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4.ckpt](https://huggingface.co/lllyasviel/ControlNet-v1-1/tree/main)) and save it at ./models/controlnet/control_v11p_sd15_canny.pth.
+  Download the pretrained [Controlnet] from https://huggingface.co/lllyasviel/ControlNet-v1-1/tree/main and save control_v11p_sd15_canny.pth as ./models/controlnet/control_v11p_sd15_canny.pth.
 
   Download the pretrained model [LSAST] ([https://drive.google.com/drive/folders/1_2jykbjVCF6SqJisvIt5-4fAFzVAj-F0?usp=drive_link](https://drive.google.com/drive/folders/1Il2xvl38ubMuoVQoGSEBcjnnWrxXYElE?usp=drive_link))
 
