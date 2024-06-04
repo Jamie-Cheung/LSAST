@@ -20,10 +20,11 @@ sys.path.append(os.path.dirname(sys.path[0]))
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
-from annotator.util import resize_image, HWC3
-from annotator.canny import CannyDetector
 from transformers import CLIPProcessor, CLIPModel
 from cldm.model import create_model, load_state_dict
+class CannyDetector:
+    def __call__(self, img, low_threshold, high_threshold):
+        return cv2.Canny(img, low_threshold, high_threshold)
 apply_canny = CannyDetector()
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
