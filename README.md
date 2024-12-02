@@ -179,12 +179,32 @@ For packages, see environment.yaml.
 ### Citation
    
    ```sh
-   @article{zhang2024towards,
-   title={Towards Highly Realistic Artistic Style Transfer via Stable Diffusion with Step-aware and Layer-aware Prompt},
-   author={Zhang, Zhanjie and Zhang, Quanwei and Lin, Huaizhong and Xing, Wei and Mo, Juncheng and Huang, Shuaicheng and Xie, Jinheng and Li, Guangyuan and Luan, Junsheng and Zhao, Lei and others},
-   journal={arXiv preprint arXiv:2404.11474},
-   year={2024}
-   }
+   @inproceedings{DBLP:conf/ijcai/ZhangZL0MHXLL0Z24,
+  author       = {Zhanjie Zhang and
+                  Quanwei Zhang and
+                  Huaizhong Lin and
+                  Wei Xing and
+                  Juncheng Mo and
+                  Shuaicheng Huang and
+                  Jinheng Xie and
+                  Guangyuan Li and
+                  Junsheng Luan and
+                  Lei Zhao and
+                  Dalong Zhang and
+                  Lixia Chen},
+  title        = {Towards Highly Realistic Artistic Style Transfer via Stable Diffusion
+                  with Step-aware and Layer-aware Prompt},
+  booktitle    = {Proceedings of the Thirty-Third International Joint Conference on
+                  Artificial Intelligence, {IJCAI} 2024, Jeju, South Korea, August 3-9,
+                  2024},
+  pages        = {7814--7822},
+  publisher    = {ijcai.org},
+  year         = {2024},
+  url          = {https://www.ijcai.org/proceedings/2024/865},
+  timestamp    = {Fri, 18 Oct 2024 20:55:22 +0200},
+  biburl       = {https://dblp.org/rec/conf/ijcai/ZhangZL0MHXLL0Z24.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
    ```
    
 <p align="right">(<a href="#top">back to top</a>)</p>
