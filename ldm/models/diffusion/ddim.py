@@ -10,12 +10,13 @@ from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, mak
 
 
 class DDIMSampler(object):
-    def __init__(self, model, schedule="linear", **kwargs):
+    def __init__(self, model, schedule="linear", lambda_PoA=3.0, **kwargs):
         super().__init__()
         self.model = model
         self.ddpm_num_timesteps = model.num_timesteps
         self.prospect_stages=model.prospect_stages
         self.schedule = schedule
+        self.lambda_PoA = lambda_PoA
 
     def register_buffer(self, name, attr):
         if type(attr) == torch.Tensor:
@@ -170,21 +171,50 @@ class DDIMSampler(object):
     @torch.no_grad()
     def p_sample_ddim(self, x, c, t, control, index, repeat_noise=False, use_original_steps=False, input_noise = None, quantize_denoised=False,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
-                      unconditional_guidance_scale=1., unconditional_conditioning=None):
+                      unconditional_guidance_scale=1., unconditional_conditioning=None,
+                      c_PoA=None):
         b, *_, device = *x.shape, x.device
 
         if unconditional_conditioning is None or unconditional_guidance_scale == 1.:
             e_t = self.model.apply_model(x, t, c, control)
         else:
-            x_in = torch.cat([x] * 2)
-            t_in = torch.cat([t] * 2)
-            c_in=[]
-
-            for i in range(len(c)):
-                c_in.append(torch.cat([unconditional_conditioning[i], c[i]]))
-
-            e_t_uncond, e_t = self.model.apply_model(x_in, t_in, c_in[int(t*self.prospect_stages/1000):int(t*self.prospect_stages/1000)+3],control).chunk(2)
-            e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
+            # Fix tensor t → int safely
+            t_val = t[0].item() if t.numel() > 1 else t.item()
+            idx = int(t_val * self.prospect_stages / 1000)
+            idx = min(idx, len(c) - 3)  # clamp to avoid out-of-bounds
+            
+            if c_PoA is not None:
+                # ──────────────────────────────────────────────────
+                # DUAL P* BATCH: [uc, style, PoA] → 1 forward pass
+                # ──────────────────────────────────────────────────
+                x_in = torch.cat([x] * 3)
+                t_in = torch.cat([t] * 3)
+                c_in_window = [
+                    torch.cat([unconditional_conditioning[i], c[i], c_PoA[i]])
+                    for i in range(idx, idx + 3)
+                ]
+                out = self.model.apply_model(x_in, t_in, c_in_window, control)
+                e_t_uncond, e_t_style, e_t_PoA = out.chunk(3)
+                
+                # Logit Fusion: e_fused = e_unc + λ_style*(e_style - e_unc) + λ_PoA*(e_PoA - e_unc)
+                lambda_style = unconditional_guidance_scale
+                lambda_PoA = self.lambda_PoA
+                e_t = (e_t_uncond
+                       + lambda_style * (e_t_style - e_t_uncond)
+                       + lambda_PoA * (e_t_PoA - e_t_uncond))
+            else:
+                # ──────────────────────────────────────────────────
+                # FALLBACK: Single P* CFG (backward compatible)
+                # ──────────────────────────────────────────────────
+                x_in = torch.cat([x] * 2)
+                t_in = torch.cat([t] * 2)
+                c_in_window = [
+                    torch.cat([unconditional_conditioning[i], c[i]])
+                    for i in range(idx, idx + 3)
+                ]
+                out = self.model.apply_model(x_in, t_in, c_in_window, control)
+                e_t_uncond, e_t = out.chunk(2)
+                e_t = e_t_uncond + unconditional_guidance_scale * (e_t - e_t_uncond)
 
         if score_corrector is not None:
             assert self.model.parameterization == "eps"
@@ -233,7 +263,7 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def decode(self, x_latent, cond, t_start, controlnet_canny, control, unconditional_guidance_scale=1.0, unconditional_conditioning=None,
-               use_original_steps=False, input_noise = None):
+               use_original_steps=False, input_noise = None, c_PoA=None):
 
         timesteps = np.arange(self.ddpm_num_timesteps) if use_original_steps else self.ddim_timesteps
         timesteps = timesteps[:t_start]
@@ -247,9 +277,16 @@ class DDIMSampler(object):
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
             ts = torch.full((x_latent.shape[0],), step, device=x_latent.device, dtype=torch.long)
-            control_canny = controlnet_canny(x_dec, control, ts, cond[int(ts*10/1000):int(ts*10/1000)+3])
+            
+            # Fix tensor ts → int safely + use prospect_stages instead of hardcoded 10
+            ts_val = ts[0].item() if ts.numel() > 1 else ts.item()
+            idx_ctrl = int(ts_val * self.prospect_stages / 1000)
+            idx_ctrl = min(idx_ctrl, len(cond) - 3)
+            control_canny = controlnet_canny(x_dec, control, ts, cond[idx_ctrl:idx_ctrl+3])
+            
             x_dec, _ = self.p_sample_ddim(x_dec, cond, ts, control_canny, index=index, use_original_steps=use_original_steps,
                                           unconditional_guidance_scale=unconditional_guidance_scale,
                                           unconditional_conditioning=unconditional_conditioning,
-                                          input_noise = input_noise)
+                                          input_noise=input_noise,
+                                          c_PoA=c_PoA)
         return x_dec

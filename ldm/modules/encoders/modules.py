@@ -161,8 +161,19 @@ class FrozenCLIPEmbedder(AbstractEncoder):
     """Uses the CLIP transformer encoder for text (from Hugging Face)"""
     def __init__(self, version="openai/clip-vit-large-patch14", device="cuda", max_length=77):
         super().__init__()
-        self.tokenizer = CLIPTokenizer.from_pretrained(version)
-        self.transformer = CLIPTextModel.from_pretrained(version)
+        try:
+            self.tokenizer = CLIPTokenizer.from_pretrained(version)
+            self.transformer = CLIPTextModel.from_pretrained(version)
+        except Exception as e:
+            print(f"Transformers from_pretrained failed ({e}). Auto-downloading via huggingface_hub fallback...")
+            from huggingface_hub import snapshot_download
+            import os
+            # Build an absolute offline cache path based on current working directory
+            offline_dir = os.path.join(os.getcwd(), "clip_offline_cache")
+            if not os.path.exists(offline_dir):
+                snapshot_download(repo_id=version, local_dir=offline_dir)
+            self.tokenizer = CLIPTokenizer.from_pretrained(offline_dir)
+            self.transformer = CLIPTextModel.from_pretrained(offline_dir)
 
         self.device = device
         self.max_length = max_length
@@ -228,14 +239,20 @@ class FrozenCLIPEmbedder(AbstractEncoder):
                 if output_hidden_states:
                     encoder_states = encoder_states + (hidden_states,)
 
-                layer_outputs = encoder_layer(
-                    hidden_states,
-                    attention_mask,
-                    causal_attention_mask,
-                    output_attentions=output_attentions,
-                )
+                layer_kwargs = {"output_attentions": output_attentions}
+                import inspect
+                sig = inspect.signature(encoder_layer.forward)
+                if "attention_mask" in sig.parameters:
+                    layer_kwargs["attention_mask"] = attention_mask
+                if "causal_attention_mask" in sig.parameters:
+                    layer_kwargs["causal_attention_mask"] = causal_attention_mask
 
-                hidden_states = layer_outputs[0]
+                layer_outputs = encoder_layer(hidden_states, **layer_kwargs)
+
+                if isinstance(layer_outputs, tuple):
+                    hidden_states = layer_outputs[0]
+                else:
+                    hidden_states = layer_outputs
 
                 if output_attentions:
                     all_attentions = all_attentions + (layer_outputs[1],)
@@ -272,6 +289,9 @@ class FrozenCLIPEmbedder(AbstractEncoder):
             input_ids = input_ids.view(-1, input_shape[-1])
 
             hidden_states = self.embeddings(input_ids=input_ids, position_ids=position_ids, embedding_manager=embedding_manager,prospect_words = prospect_words)
+
+            if isinstance(hidden_states, torch.Tensor):
+                hidden_states = [hidden_states]
 
             bsz, seq_len = input_shape
             last_hidden_states = []

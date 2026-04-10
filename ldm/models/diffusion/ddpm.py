@@ -606,6 +606,35 @@ class LatentDiffusion(DDPM):
             c = getattr(self.cond_stage_model, self.cond_stage_forward)(c)
         return c
 
+    def get_learned_conditioning_with_manager(self, c, embedding_manager, prospect_words=None):
+        """
+        Similar to get_learned_conditioning() but accepts explicit embedding_manager.
+        Used for dual P* inference (style + PoA).
+        
+        Args:
+            c: list of prompts or batch
+            embedding_manager: EmbeddingManager instance to use
+            prospect_words: list of special tokens (e.g., ['*'])
+        
+        Returns:
+            list of conditioning tensors [prospect_stages, [B, 77, 768]]
+        """
+        if self.cond_stage_forward is None:
+            if hasattr(self.cond_stage_model, 'encode') and callable(self.cond_stage_model.encode):
+                c = self.cond_stage_model.encode(
+                    c,
+                    prospect_words=prospect_words,
+                    embedding_manager=embedding_manager
+                )
+                if isinstance(c, DiagonalGaussianDistribution):
+                    c = c.mode()
+            else:
+                c = self.cond_stage_model(c)
+        else:
+            assert hasattr(self.cond_stage_model, self.cond_stage_forward)
+            c = getattr(self.cond_stage_model, self.cond_stage_forward)(c)
+        return c
+
     def meshgrid(self, h, w):
         y = torch.arange(0, h).view(h, 1, 1).repeat(1, w, 1)
         x = torch.arange(0, w).view(1, w, 1).repeat(h, 1, 1)

@@ -72,10 +72,47 @@ model = load_model_from_config(config, f"{ckpt}")
 sampler = DDIMSampler(model)
 canny_model_path = "./models/controlnet/control_v11p_sd15_canny.pth"
 
+# ────────────────────────────────────────────────
+# Setup: Load dual EmbeddingManager for dual P* inference
+# ────────────────────────────────────────────────
+global_embedding_manager_PoA = None
+
+def setup_dual_embedding_managers(style_ckpt_1, style_ckpt_2=None):
+    """
+    Initialize dual EmbeddingManager instances.
+    If style_ckpt_2 is None, use the same as style_ckpt_1.
+    
+    Args:
+        style_ckpt_1: Path to first style checkpoint (for model.embedding_manager)
+        style_ckpt_2: Path to second checkpoint (for PoA testing)
+    """
+    global global_embedding_manager_PoA
+    
+    model.cpu()
+    
+    # Style EmbeddingManager #1 (primary)
+    model.embedding_manager.load(style_ckpt_1)
+    
+    # PoA EmbeddingManager (second checkpoint for dual P* testing)
+    if style_ckpt_2 is None:
+        style_ckpt_2 = style_ckpt_1  # Use same checkpoint if not specified
+    
+    poa_config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
+    from ldm.util import instantiate_from_config
+    global_embedding_manager_PoA = instantiate_from_config(
+        poa_config.model.params.personalization_config,
+        embedder=model.cond_stage_model
+    )
+    global_embedding_manager_PoA.load(style_ckpt_2)
+    
+    model = model.to(device)
+    global_embedding_manager_PoA = global_embedding_manager_PoA.to(device)
+
 
 def main(prompt='', content_dir=None, ddim_steps=50, strength=0.5, ddim_eta=0.0, n_iter=1, C=4, f=8, n_rows=0,
          scale=10.0, \
-         model=None, seed=42, prospect_words=None, n_samples=1, height=512, width=512):
+         model=None, seed=42, prospect_words=None, n_samples=1, height=512, width=512,
+         embedding_manager_PoA=None, lambda_PoA=3.0):
     precision = "autocast"
     outdir = "outputs/comparison-ukiyoe-0.7"
     seed_everything(seed)
@@ -120,11 +157,27 @@ def main(prompt='', content_dir=None, ddim_steps=50, strength=0.5, ddim_eta=0.0,
                     for prompts in tqdm(data, desc="data"):
                         uc = None
                         if scale != 1.0:
-                            uc = model.get_learned_conditioning(batch_size * [""])
+                            null_emb = model.get_learned_conditioning(batch_size * [""])
+                            # Ensure uc is a list of prospect_stages tensors
+                            if isinstance(null_emb, torch.Tensor):
+                                uc = [null_emb] * model.prospect_stages
+                            else:
+                                uc = null_emb
+                        
                         if isinstance(prompts, tuple):
                             prompts = list(prompts)
                         
+                        # Style conditioning (primary)
                         c = model.get_learned_conditioning(prompts, prospect_words=prospect_words)
+                        
+                        # PoA conditioning (second checkpoint for dual P* testing)
+                        c_PoA = None
+                        if embedding_manager_PoA is not None:
+                            c_PoA = model.get_learned_conditioning_with_manager(
+                                prompts,
+                                embedding_manager=embedding_manager_PoA,
+                                prospect_words=prospect_words
+                            )
                         img = cv2.imread(content_dir)
                         img = cv2.resize(img, (512, 512))
                         # H, W, C = img.shape
@@ -156,7 +209,10 @@ def main(prompt='', content_dir=None, ddim_steps=50, strength=0.5, ddim_eta=0.0,
 
                         z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc] * batch_size).to(device))
                         t_enc = int(strength * ddim_steps)
-                        samples = sampler.decode(z_enc, c, t_enc, controlnet_canny, control, unconditional_guidance_scale=scale,unconditional_conditioning=uc,)
+                        samples = sampler.decode(z_enc, c, t_enc, controlnet_canny, control, 
+                                                 unconditional_guidance_scale=scale,
+                                                 unconditional_conditioning=uc,
+                                                 c_PoA=c_PoA)
                         
                         x_samples = model.decode_first_stage(samples)
 
@@ -182,7 +238,16 @@ def main(prompt='', content_dir=None, ddim_steps=50, strength=0.5, ddim_eta=0.0,
                 toc = time.time()
     return output 
 model.cpu()
-model.embedding_manager.load('./logs/berthe-morisot2023-12-25T08-48-51_test/checkpoints/embeddings_gs-99999.pt')
+
+# ────────────────────────────────────────────────────────────────
+# CONFIGURATION: Dual style checkpoints for testing
+# ────────────────────────────────────────────────────────────────
+style_ckpt_1 = './logs/berthe-morisot2023-12-25T08-48-51_test/checkpoints/embeddings_gs-99999.pt'
+style_ckpt_2 = './logs/berthe-morisot2023-12-25T08-48-51_test/checkpoints/embeddings_gs-99999.pt'  # Can be different checkpoint
+
+setup_dual_embedding_managers(style_ckpt_1, style_ckpt_2)
+# ────────────────────────────────────────────────────────────────
+
 model = model.to(device)
 for i in range(2650):
     contentdir = "./comparison/" + str(i) + ".jpg"
@@ -195,7 +260,9 @@ for i in range(2650):
      height = 512, \
      width = 768, \
      prospect_words = ['*'],
-     model = model,\
+     model = model,
+     embedding_manager_PoA=global_embedding_manager_PoA,
+     lambda_PoA=3.0
      )
     
 
